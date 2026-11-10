@@ -2,6 +2,7 @@
   "name": "Wetter-Zeitreise",
   "short_name": "Wetter-Zeitreise",
   "description": "Wie war das Wetter an diesem Tag in den letzten fünf Jahren?",
+  "id": "/wetter-zeitreise",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
