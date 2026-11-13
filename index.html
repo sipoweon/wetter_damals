@@ -281,7 +281,10 @@ function lineChart(el, o){
   ticks.forEach(t => g += `<line class="grid${t===0 && y0<0 ? ' zero':''}" x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tick" x="${m.l-8}" y="${Y(t)}" dy=".32em" text-anchor="end">${tickFmt(t,ticks)}</text>`);
   o.labels.forEach((l,i) => g += `<text class="tick${i===o.center?' strong':''}" x="${X(i)}" y="${H-8}" text-anchor="middle">${l}</text>`);
   o.series.forEach(s => { let d = '', pen = false;
-    s.values.forEach((v,i) => { if (!ok(v)){ pen = false; return; } d += `${pen?'L':'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`; pen = true; });
+    s.values.forEach((v,i) => { if (!ok(v)){ pen = false; return; }
+      // am Stichtag läuft die Linie in das linke Balkenende hinein und vom rechten weiter
+      const xs = i===o.center ? [X(i)-barW/2, X(i)+barW/2] : [X(i)];
+      xs.forEach(x => { d += `${pen?'L':'M'}${x.toFixed(1)},${Y(v).toFixed(1)}`; pen = true; }); });
     g += `<path class="line${s.dashed?' dashed':''}" d="${d}" style="stroke:${s.color}"/>`;
     s.values.forEach((v,i) => { if (!ok(v)) return;
       g += i===o.center
