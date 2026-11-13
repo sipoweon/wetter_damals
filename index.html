@@ -40,7 +40,7 @@
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text-primary)}
 body{font-family:'DM Sans',system-ui,-apple-system,Segoe UI,sans-serif;font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased}
-.wrap{max-width:860px;margin:0 auto;padding:22px 16px 40px}
+.wrap{max-width:980px;margin:0 auto;padding:22px 16px 40px}
 h1{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(28px,6.5vw,40px);letter-spacing:-.02em;margin:0 0 16px;line-height:1.05}
 
 .controls{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px}
@@ -79,7 +79,7 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-m
 .chart .grid{stroke:var(--grid);stroke-width:1}
 .chart .grid.zero{stroke:var(--text-muted);stroke-opacity:.6}
 .chart .tick{fill:var(--text-muted);font-size:11px;font-family:inherit}
-.chart .tick.strong{fill:var(--text-primary);font-weight:700}
+.chart .tick.strong{fill:var(--text-primary);font-weight:700;font-size:13px}
 .chart .band{fill:var(--band)}
 .chart .line{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 .chart .line.dashed{stroke-dasharray:5 4}
@@ -266,20 +266,27 @@ const tickFmt = (v, t) => (t[1]-t[0]) < 1 ? nf1.format(v) : nf0.format(v);
 
 function lineChart(el, o){
   const W = Math.max(280, el.clientWidth), H = Math.round(Math.max(260, Math.min(380, W*0.62)));
-  const m = {t:12, r:46, b:28, l:34}, n = o.labels.length, iw = W-m.l-m.r, ih = H-m.t-m.b;
+  const m = {t:12, r:42, b:28, l:30}, n = o.labels.length, iw = W-m.l-m.r, ih = H-m.t-m.b;
   const vals = o.series.flatMap(s => s.values).filter(ok);
   if (!vals.length){ el.innerHTML = '<p class="empty">Keine Daten verfügbar.</p>'; return; }
   const lo = o.zero ? 0 : Math.min(...vals), hi = Math.max(o.minMax || -Infinity, ...vals);
   const ticks = niceTicks(lo, hi), y0 = ticks[0], y1 = ticks.at(-1);
-  const X = i => m.l + i*iw/(n-1), Y = v => m.t + ih - (v-y0)/(y1-y0)*ih;
-  const bw = iw/(n-1);
-  let g = `<rect class="band" x="${X(o.center)-bw/2}" y="${m.t}" width="${bw}" height="${ih}" rx="8"/>`;
+  // Spalten: Stichtag bekommt deutlich mehr Breite, die Nachbartage weniger
+  const wts = o.labels.map((_,i) => i===o.center ? 2.6 : 1), sum = wts.reduce((a,b)=>a+b,0);
+  const edges = [m.l]; wts.forEach(w => edges.push(edges.at(-1) + w/sum*iw));
+  const X = i => (edges[i] + edges[i+1]) / 2, Y = v => m.t + ih - (v-y0)/(y1-y0)*ih;
+  const cw = edges[o.center+1] - edges[o.center];
+  const barW = Math.min(44, cw*0.5);
+  let g = `<rect class="band" x="${edges[o.center]+2}" y="${m.t}" width="${cw-4}" height="${ih}" rx="10"/>`;
   ticks.forEach(t => g += `<line class="grid${t===0 && y0<0 ? ' zero':''}" x1="${m.l}" x2="${W-m.r}" y1="${Y(t)}" y2="${Y(t)}"/><text class="tick" x="${m.l-8}" y="${Y(t)}" dy=".32em" text-anchor="end">${tickFmt(t,ticks)}</text>`);
   o.labels.forEach((l,i) => g += `<text class="tick${i===o.center?' strong':''}" x="${X(i)}" y="${H-8}" text-anchor="middle">${l}</text>`);
   o.series.forEach(s => { let d = '', pen = false;
     s.values.forEach((v,i) => { if (!ok(v)){ pen = false; return; } d += `${pen?'L':'M'}${X(i).toFixed(1)},${Y(v).toFixed(1)}`; pen = true; });
     g += `<path class="line${s.dashed?' dashed':''}" d="${d}" style="stroke:${s.color}"/>`;
-    s.values.forEach((v,i) => { if (ok(v)) g += `<circle class="dot" cx="${X(i)}" cy="${Y(v)}" r="${i===o.center?5.5:4}" style="fill:${s.color}"/>`; });
+    s.values.forEach((v,i) => { if (!ok(v)) return;
+      g += i===o.center
+        ? `<rect class="dot" x="${X(i)-barW/2}" y="${Y(v)-3.5}" width="${barW}" height="7" rx="3.5" style="fill:${s.color}"/>`
+        : `<circle class="dot" cx="${X(i)}" cy="${Y(v)}" r="3.5" style="fill:${s.color}"/>`; });
   });
   const ends = o.series.map(s => { let i = s.values.length-1; while (i>=0 && !ok(s.values[i])) i--; return i<0 ? null : {t:s.short, x:X(i), y:Y(s.values[i])}; })
     .filter(Boolean).sort((a,b) => a.y-b.y);
@@ -288,12 +295,12 @@ function lineChart(el, o){
   for (let k=ends.length-1; k>=0; k--){ const lim = floor - (ends.length-1-k)*13; if (ends[k].y > lim) ends[k].y = lim; }
   ends.forEach(e => g += `<text class="endlabel" x="${e.x+9}" y="${e.y}" dy=".32em">${e.t}</text>`);
   g += `<line class="cross" x1="0" x2="0" y1="${m.t}" y2="${m.t+ih}" visibility="hidden"/>`;
-  g += `<rect class="hit" x="${m.l-12}" y="0" width="${iw+24}" height="${H}"/>`;
+  g += `<rect class="hit" x="${m.l}" y="0" width="${iw}" height="${H}"/>`;
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${g}</svg>`;
   const svg = el.firstChild, cross = svg.querySelector('.cross'), hit = svg.querySelector('.hit');
   const rows = i => o.series.slice().reverse().map(s => ({color:s.color, dashed:s.dashed, name:s.name, v:s.values[i]}));
   const move = e => { const r = svg.getBoundingClientRect(), px = (e.clientX-r.left)*W/r.width;
-    const i = Math.max(0, Math.min(n-1, Math.round((px-m.l)/bw)));
+    let i = edges.findIndex((e,k) => k>0 && px < e) - 1; if (i < 0) i = px < m.l ? 0 : n-1;
     cross.setAttribute('x1',X(i)); cross.setAttribute('x2',X(i)); cross.setAttribute('visibility','visible');
     showTip(e, o.tipTitle(i), rows(i), o.fmt); };
   hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move);

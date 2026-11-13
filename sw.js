@@ -1,5 +1,5 @@
 // Minimaler Service Worker: App-Gerüst offline verfügbar, Wetterdaten immer frisch aus dem Netz.
-const CACHE = 'wz-v3';
+const CACHE = 'wz-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); self.skipWaiting(); });
 self.addEventListener('activate', e => {
